@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class ClassHeader(models.Model):
     client = models.CharField(max_length=3)  # MANDT
     internal_class_number = models.CharField(max_length=10, primary_key=True)  # CLINT (PK)
@@ -42,13 +43,19 @@ class Characteristic(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.internal_characteristic})"
-    
+
 
 class CharacteristicValue(models.Model):
     client = models.CharField(max_length=3)  # MANDT
-    internal_characteristic = models.CharField(max_length=10)  # ATINN (PK)
-    value_counter = models.CharField(max_length=4)  # ATZHL (PK)
-    archive_counter = models.CharField(max_length=4)  # ADZHL (PK)
+    internal_characteristic = models.ForeignKey(
+        'Characteristic',
+        on_delete=models.CASCADE,
+        db_column='internal_characteristic',
+        to_field='internal_characteristic',
+        related_name='values'
+    )
+    value_counter = models.CharField(max_length=4)  # ATZHL
+    archive_counter = models.CharField(max_length=4)  # ADZHL
     value = models.CharField(max_length=30)  # ATWRT
 
     class Meta:
@@ -59,7 +66,8 @@ class CharacteristicValue(models.Model):
 
     def __str__(self):
         return f"{self.value} (ATINN: {self.internal_characteristic})"
-    
+
+
 class ObjectLink(models.Model):
     client = models.CharField(max_length=3)  # MANDT
     config_object = models.CharField(max_length=18, primary_key=True)  # CUOBJ
@@ -72,11 +80,18 @@ class ObjectLink(models.Model):
 
     def __str__(self):
         return f"CUOBJ: {self.config_object} - MATNR: {self.material_number}"
-    
+
+
 class ClassificationValue(models.Model):
     client = models.CharField(max_length=3)  # MANDT
     object_key = models.CharField(max_length=50)  # OBJEK
-    characteristic_id = models.CharField(max_length=10)  # ATINN
+    characteristic = models.ForeignKey(
+        'Characteristic',
+        on_delete=models.CASCADE,
+        db_column='characteristic_id',
+        to_field='internal_characteristic',
+        related_name='classification_values'
+    )
     value_counter = models.CharField(max_length=3)  # ATZHL
     object_class_indicator = models.CharField(max_length=1)  # MAFID
     class_type = models.CharField(max_length=3)  # KLART
@@ -89,15 +104,27 @@ class ClassificationValue(models.Model):
         verbose_name_plural = 'Classification Values'
 
     def __str__(self):
-        return f"{self.object_key} | {self.characteristic_id} = {self.characteristic_value}"
-    
+        return f"{self.object_key} | {self.characteristic} = {self.characteristic_value}"
+
 
 class ClassCharacteristic(models.Model):
     client = models.CharField(max_length=3)  # MANDT
-    class_internal_id = models.CharField(max_length=10)  # CLINT (link com tabela KLAH)
+    class_header = models.ForeignKey(
+        'ClassHeader',
+        on_delete=models.CASCADE,
+        db_column='class_internal_id',
+        to_field='internal_class_number',
+        related_name='class_characteristics'
+    )
     item_number = models.CharField(max_length=3)  # POSNR
     archive_counter = models.CharField(max_length=4)  # ADZHL
-    characteristic_id = models.CharField(max_length=10)  # IMERK (link com CABN)
+    characteristic = models.ForeignKey(
+        'Characteristic',
+        on_delete=models.CASCADE,
+        db_column='characteristic_id',
+        to_field='internal_characteristic',
+        related_name='class_links'
+    )
     object_dependent_char = models.CharField(max_length=10)  # OMERK
 
     class Meta:
@@ -106,12 +133,18 @@ class ClassCharacteristic(models.Model):
         verbose_name_plural = 'Class Characteristics'
 
     def __str__(self):
-        return f"Class {self.class_internal_id} | Characteristic {self.characteristic_id}"
-    
+        return f"Class {self.class_header} | Characteristic {self.characteristic}"
+
 
 class CharacteristicValueText(models.Model):
     client = models.CharField(max_length=3)  # MANDT
-    characteristic_id = models.CharField(max_length=10)  # ATINN
+    characteristic_value = models.ForeignKey(
+        'CharacteristicValue',
+        on_delete=models.CASCADE,
+        db_column='characteristic_id',
+        to_field='internal_characteristic',
+        related_name='texts'
+    )
     counter = models.CharField(max_length=4)  # ATZHL
     language = models.CharField(max_length=1)  # SPRAS
     archive_counter = models.CharField(max_length=4)  # ADZHL
@@ -121,7 +154,7 @@ class CharacteristicValueText(models.Model):
         db_table = 'characteristic_value_text'
         verbose_name = 'Characteristic Value Text'
         verbose_name_plural = 'Characteristic Value Texts'
-        unique_together = ('characteristic_id', 'counter', 'language')
+        unique_together = ('characteristic_value', 'counter', 'language')
 
     def __str__(self):
         return f"{self.description} ({self.language})"
