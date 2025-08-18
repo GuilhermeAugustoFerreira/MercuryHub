@@ -2,6 +2,7 @@ from django.db import models
 
 class GlobalMaterial(models.Model):
     material_number = models.CharField(max_length=18, unique=True)  # MATNR
+    #material_number = models.CharField(max_length=18, blank=True, null=True) # MATNR
     deletion_indicator = models.CharField(max_length=1, blank=True, null=True)  # LVORM
     material_type = models.CharField(max_length=4)  # MTART
     industry_sector = models.CharField(max_length=1)  # MBRSH

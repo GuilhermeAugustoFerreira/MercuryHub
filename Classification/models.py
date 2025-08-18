@@ -33,7 +33,9 @@ class Characteristic(models.Model):  #CABN  -> main for characteristics
 # Uso: Uma característica pode ser, por exemplo, “Cor”, “Comprimento”, “Peso”. Está ligada à estrutura de classificação.
 
     client = models.CharField(max_length=3)  # MANDT
-    internal_characteristic = models.CharField(max_length=10)  # ATINN (PK)
+    #internal_characteristic = models.CharField(max_length=10)  # ATINN (PK)
+    #internal_characteristic = models.CharField(max_length=10, primary_key=True)  # ATINN
+    internal_characteristic = models.BigAutoField(primary_key=True) 
     archive_counter = models.CharField(max_length=4)  # ADZHL (PK)
     name = models.CharField(max_length=30)  # ATNAM
     data_type = models.CharField(max_length=4)  # ATFOR
@@ -67,7 +69,8 @@ class CharacteristicValue(models.Model): #CAWN
         on_delete=models.CASCADE,
         db_column='internal_characteristic',
         to_field='internal_characteristic',
-        related_name='values'
+        related_name='values',
+        # unique = True
     )
     value_counter = models.CharField(max_length=4)  # ATZHL
     archive_counter = models.CharField(max_length=4)  # ADZHL
@@ -91,7 +94,16 @@ class ObjectLink(models.Model): #INOB
 
     client = models.CharField(max_length=3)  # MANDT
     config_object = models.CharField(max_length=18, primary_key=True)  # CUOBJ
-    material_number = models.CharField(max_length=18, blank=True, null=True)  # MATNR
+    # material_number = models.CharField(max_length=18, blank=True, null=True)  # MATNR
+    material = models.ForeignKey(
+        'MaterialGlobal.GlobalMaterial',
+        on_delete=models.SET_NULL,
+        db_column='material_number',
+        to_field='material_number',
+        related_name='object_links',
+        blank=True,
+        null=True
+    )
 
     class Meta:
         db_table = 'object_link'
@@ -99,7 +111,8 @@ class ObjectLink(models.Model): #INOB
         verbose_name_plural = 'Object Links'
 
     def __str__(self):
-        return f"CUOBJ: {self.config_object} - MATNR: {self.material_number}"
+        #return f"CUOBJ: {self.config_object} - MATNR: {self.material_number}"
+        return f"CUOBJ: {self.config_object} - MATNR: {self.material.material_number if self.material else 'None'}"
 
 
 class ClassificationValue(models.Model): #AUSP
@@ -121,7 +134,7 @@ class ClassificationValue(models.Model): #AUSP
     object_class_indicator = models.CharField(max_length=1)  # MAFID
     class_type = models.CharField(max_length=3)  # KLART
     archive_counter = models.CharField(max_length=4)  # ADZHL
-    characteristic_value = models.CharField(max_length=30)  # ATWRT
+    characteristic_value = models.CharField(max_length=30, unique = True)  # ATWRT
 
     class Meta:
         db_table = 'classification_value'
@@ -144,7 +157,7 @@ class ClassCharacteristic(models.Model): #KSML
         on_delete=models.CASCADE,
         db_column='class_internal_id',
         to_field='internal_class_number',
-        related_name='class_characteristics'
+        related_name='class_characteristics',
     )
     item_number = models.CharField(max_length=3)  # POSNR
     archive_counter = models.CharField(max_length=4)  # ADZHL
@@ -176,8 +189,8 @@ class CharacteristicValueText(models.Model): #CAWNT
     characteristic_value = models.ForeignKey(
         'CharacteristicValue',
         on_delete=models.CASCADE,
-        db_column='characteristic_id',
-        to_field='internal_characteristic',
+        # db_column='characteristic_id',
+        # to_field='internal_characteristic',
         related_name='texts'
     )
     counter = models.CharField(max_length=4)  # ATZHL
