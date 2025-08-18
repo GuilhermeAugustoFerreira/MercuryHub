@@ -1,7 +1,12 @@
 from django.db import models
 
 
-class ClassHeader(models.Model):
+class ClassHeader(models.Model): #KLAH  -> main for classes
+
+# Função: Armazena os dados principais de uma classe no SAP.
+# Campos-chave: CLINT (ID interno), CLASS (número da classe), KLART (tipo da classe).
+# Uso: Define o agrupamento lógico de objetos com características comuns (por exemplo, materiais com propriedades semelhantes).
+
     client = models.CharField(max_length=3)  # MANDT
     internal_class_number = models.CharField(max_length=10, primary_key=True)  # CLINT (PK)
     class_type = models.CharField(max_length=3)  # KLART
@@ -21,7 +26,12 @@ class ClassHeader(models.Model):
         return f"{self.class_number} ({self.class_type})"
 
 
-class Characteristic(models.Model):
+class Characteristic(models.Model):  #CABN  -> main for characteristics
+
+# Função: Define as características (atributos) utilizadas para classificar objetos.
+# Campos-chave: ATINN (ID interno da característica), ATNAM (nome).
+# Uso: Uma característica pode ser, por exemplo, “Cor”, “Comprimento”, “Peso”. Está ligada à estrutura de classificação.
+
     client = models.CharField(max_length=3)  # MANDT
     internal_characteristic = models.CharField(max_length=10)  # ATINN (PK)
     archive_counter = models.CharField(max_length=4)  # ADZHL (PK)
@@ -45,7 +55,12 @@ class Characteristic(models.Model):
         return f"{self.name} ({self.internal_characteristic})"
 
 
-class CharacteristicValue(models.Model):
+class CharacteristicValue(models.Model): #CAWN
+
+# Função: Armazena os valores possíveis atribuídos a uma característica.
+# Campos-chave: ATINN, ATZHL, ATWRT.
+# Uso: Para a característica “Cor”, os valores possíveis seriam “Vermelho”, “Azul”, etc.
+
     client = models.CharField(max_length=3)  # MANDT
     internal_characteristic = models.ForeignKey(
         'Characteristic',
@@ -68,7 +83,12 @@ class CharacteristicValue(models.Model):
         return f"{self.value} (ATINN: {self.internal_characteristic})"
 
 
-class ObjectLink(models.Model):
+class ObjectLink(models.Model): #INOB
+
+# Função: Faz o vínculo entre um objeto do mundo real (ex: material) e a classe configurada.
+# Campos-chave: CUOBJ, MATNR.
+# Uso: Permite classificar materiais, equipamentos, etc., usando as classes definidas.
+
     client = models.CharField(max_length=3)  # MANDT
     config_object = models.CharField(max_length=18, primary_key=True)  # CUOBJ
     material_number = models.CharField(max_length=18, blank=True, null=True)  # MATNR
@@ -82,7 +102,12 @@ class ObjectLink(models.Model):
         return f"CUOBJ: {self.config_object} - MATNR: {self.material_number}"
 
 
-class ClassificationValue(models.Model):
+class ClassificationValue(models.Model): #AUSP
+
+# Função: Armazena os valores atribuídos a um objeto classificado.
+# Campos-chave: OBJEK, ATINN, ATWRT.
+# Uso: Exemplo: para o material MAT001, o valor da característica “Peso” é “10kg”.
+
     client = models.CharField(max_length=3)  # MANDT
     object_key = models.CharField(max_length=50)  # OBJEK
     characteristic = models.ForeignKey(
@@ -107,7 +132,12 @@ class ClassificationValue(models.Model):
         return f"{self.object_key} | {self.characteristic} = {self.characteristic_value}"
 
 
-class ClassCharacteristic(models.Model):
+class ClassCharacteristic(models.Model): #KSML
+
+# Função: Liga uma classe às suas características.
+# Campos-chave: CLINT, IMERK.
+# Uso: Define quais características estão disponíveis para uma determinada classe.
+
     client = models.CharField(max_length=3)  # MANDT
     class_header = models.ForeignKey(
         'ClassHeader',
@@ -136,7 +166,12 @@ class ClassCharacteristic(models.Model):
         return f"Class {self.class_header} | Characteristic {self.characteristic}"
 
 
-class CharacteristicValueText(models.Model):
+class CharacteristicValueText(models.Model): #CAWNT
+
+# Função: Descrição dos valores de características por idioma.
+# Campos-chave: ATINN, ATZHL, SPRAS.
+# Uso: Armazena o texto legível de ATWRT em diferentes idiomas (como "Red" para "ROT").
+
     client = models.CharField(max_length=3)  # MANDT
     characteristic_value = models.ForeignKey(
         'CharacteristicValue',
