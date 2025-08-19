@@ -37,7 +37,7 @@ class Characteristic(models.Model):  #CABN  -> main for characteristics
     #internal_characteristic = models.CharField(max_length=10, primary_key=True)  # ATINN
     internal_characteristic = models.BigAutoField(primary_key=True) 
     archive_counter = models.CharField(max_length=4)  # ADZHL (PK)
-    name = models.CharField(max_length=30)  # ATNAM
+    name = models.CharField(max_length=30, unique=True)  # ATNAM
     data_type = models.CharField(max_length=4)  # ATFOR
     character_length = models.PositiveSmallIntegerField()  # ANZST
     case_sensitive = models.BooleanField(default=False)  # ATKLE (XFELD)
@@ -128,7 +128,7 @@ class ClassificationValue(models.Model): #AUSP
         on_delete=models.CASCADE,
         db_column='characteristic_id',
         to_field='internal_characteristic',
-        related_name='classification_values'
+        related_name='classification_values', 
     )
     value_counter = models.CharField(max_length=3)  # ATZHL
     object_class_indicator = models.CharField(max_length=1)  # MAFID
@@ -206,3 +206,29 @@ class CharacteristicValueText(models.Model): #CAWNT
 
     def __str__(self):
         return f"{self.description} ({self.language})"
+
+
+class ClassCharacteristicSettings(models.Model): #KSSL
+    class_header = models.ForeignKey(
+        'ClassHeader',  # da KLAH
+        on_delete=models.CASCADE,
+        related_name='characteristic_settings'
+    )
+    characteristic = models.ForeignKey(
+        'Characteristic',  # da CABN
+        on_delete=models.CASCADE,
+        related_name='class_settings'
+    )
+    is_required = models.BooleanField(default=False, help_text="Se marcado, a característica é obrigatória nesta classe.")
+    allow_multiple = models.BooleanField(default=False, help_text="Se marcado, permite múltiplos valores para essa característica na classe.")
+    only_predefined_values = models.BooleanField(default=False, help_text="Se marcado, restringe aos valores cadastrados (CAWN).")
+    default_value = models.CharField(max_length=30, blank=True, null=True, help_text="Valor padrão sugerido na classe.")
+
+    class Meta:
+        db_table = 'class_characteristic_settings'
+        unique_together = ('class_header', 'characteristic')
+        verbose_name = 'Class Characteristic Setting'
+        verbose_name_plural = 'Class Characteristic Settings'
+
+    def __str__(self):
+        return f"{self.class_header.class_number} - {self.characteristic.name}"
