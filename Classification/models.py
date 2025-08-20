@@ -10,7 +10,7 @@ class ClassHeader(models.Model): #KLAH  -> main for classes
     client = models.CharField(max_length=3)  # MANDT
     internal_class_number = models.CharField(max_length=10, primary_key=True)  # CLINT (PK)
     class_type = models.CharField(max_length=3)  # KLART
-    class_number = models.CharField(max_length=18)  # CLASS
+    class_name = models.CharField(max_length=18, unique= True)  # CLASS
     class_status = models.CharField(max_length=1, blank=True, null=True)  # STATU
     class_group = models.CharField(max_length=10, blank=True, null=True)  # KLAGR
     characteristics_table = models.CharField(max_length=20, blank=True, null=True)  # LEIST
@@ -21,6 +21,7 @@ class ClassHeader(models.Model): #KLAH  -> main for classes
         db_table = 'class_header'
         verbose_name = 'Class Header'
         verbose_name_plural = 'Class Headers'
+        unique_together = ('class_type', 'class_name')
 
     def __str__(self):
         return f"{self.class_number} ({self.class_type})"
