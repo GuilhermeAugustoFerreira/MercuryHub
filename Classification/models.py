@@ -21,10 +21,10 @@ class ClassHeader(models.Model): #KLAH  -> main for classes
         db_table = 'class_header'
         verbose_name = 'Class Header'
         verbose_name_plural = 'Class Headers'
-        unique_together = ('class_type', 'class_name')
+        #unique_together = ('class_type', 'class_name')
 
     def __str__(self):
-        return f"{self.class_number} ({self.class_type})"
+        return f"{self.class_name} ({self.class_type})"
 
 
 class Characteristic(models.Model):  #CABN  -> main for characteristics
@@ -52,7 +52,7 @@ class Characteristic(models.Model):  #CABN  -> main for characteristics
         db_table = 'characteristic'
         verbose_name = 'Characteristic'
         verbose_name_plural = 'Characteristics'
-        unique_together = (('internal_characteristic', 'archive_counter'),)
+        #unique_together = (('internal_characteristic', 'archive_counter'),)
 
     def __str__(self):
         return f"{self.name} ({self.internal_characteristic})"
@@ -135,7 +135,7 @@ class ClassificationValue(models.Model): #AUSP
     object_class_indicator = models.CharField(max_length=1)  # MAFID
     class_type = models.CharField(max_length=3)  # KLART
     archive_counter = models.CharField(max_length=4)  # ADZHL
-    characteristic_value = models.CharField(max_length=30, unique = True)  # ATWRT
+    characteristic_value = models.CharField(max_length=30)  # ATWRT
 
     class Meta:
         db_table = 'classification_value'
@@ -232,4 +232,4 @@ class ClassCharacteristicSettings(models.Model): #KSSL
         verbose_name_plural = 'Class Characteristic Settings'
 
     def __str__(self):
-        return f"{self.class_header.class_number} - {self.characteristic.name}"
+        return f"{self.class_header.class_name} - {self.characteristic.name}"

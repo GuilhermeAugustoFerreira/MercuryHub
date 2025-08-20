@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'MaterialLocal',
     'MaterialGlobal',
     'Classification',
+    'Governance',
 ]
 
 MIDDLEWARE = [
