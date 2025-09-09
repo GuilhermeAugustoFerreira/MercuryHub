@@ -1,36 +1,142 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from Governance.models import MaterialCreationRequest
+from Governance.services.workflow import advance_request_by_rule
+
+#CENARIO DE APROVACAO
+
+User = get_user_model()
+requester = User.objects.create_user(
+    username="req_success",
+    email="req_success@example.com",
+    password="test1234",
+)
+
+payload = {
+    "material_number": "300000000000000011",
+    "material_type": "FERT",
+    "industry_sector": "M",
+    "material_group": "000000001",
+    "base_unit_of_measure": "PC",
+    "language": "EN",
+    "description": "Test Material",
+}
+
+cr = MaterialCreationRequest.objects.create(
+    cr_number=f"CR-{timezone.now().timestamp()}".replace(".", ""),
+    requester=requester,
+    status="DRAFT",
+    payload=payload,
+)
+
+
+
+# DRAFT -> UNDER_REVIEW_GLOBAL
+advance_request_by_rule(cr, role="REQUESTER",
+                        action="submit",
+                        client_code="Lilly",
+                        table_key="route_create_material")
+cr.refresh_from_db()
+print("Depois do submit:", cr.status)
+
+
+# UNDER_REVIEW_GLOBAL -> CREATE_MATERIAL -> APPROVED
+advance_request_by_rule(cr, role="GLOBAL_ANALYST",
+                        action="approve",
+                        client_code="Lilly",
+                        table_key="route_create_material")
+cr.refresh_from_db()
+print("Depois do approve:", cr.status)
+
+
+
+
+
+
+
+
+
+
+
+
+
+from django.contrib.auth import get_user_model
+from django.utils import timezone
 from Governance.models import MaterialCreationRequest
 from Governance.services.workflow import advance_request_by_rule
 
 User = get_user_model()
-u = User.objects.first()  # ou crie um: User.objects.create_user(...)
-
-# Cenário SUCESSO
-payload_ok = {
-    "material_number": "MAT1002005",
-    "material_type": "FERT",
-    "industry_sector": "M",
-    "material_group": "001234567",
-    "base_unit_of_measure": "EA",
-    "language": "EN",
-    "description": "Teste de criacao de material",
-}
-
-cr = MaterialCreationRequest.objects.create(
-    cr_number="CR-TEST-OK4",
-    requester=u,
-    status="DRAFT",
-    payload=payload_ok,
+requester = User.objects.create_user(
+    username="req_reject",
+    email="req_reject@example.com",
+    password="test1234",
 )
 
-print(cr.status)                 # DRAFT
-advance_request_by_rule(cr, role="REQUESTER", action="submit")    # DRAFT -> UNDER_REVIEW_GLOBAL
-cr.refresh_from_db(); print(cr.status)
+cr = MaterialCreationRequest.objects.create(
+    cr_number=f"CR-{timezone.now().timestamp()}".replace(".", ""),
+    requester=requester,
+    status="DRAFT",
+    payload={"material_number": "400000000000000001"},
+)
 
-advance_request_by_rule(cr, role="GLOBAL_TEAM", action="approve")  # UNDER_REVIEW_GLOBAL -> (próximo)
-cr.refresh_from_db(); print(cr.status)
+advance_request_by_rule(
+    cr, role="REQUESTER", action="submit",
+    client_code="Lilly", table_key="route_create_material"
+)
+cr.refresh_from_db()
+print("Após submit:", cr.status)
 
-# Verifique se o material foi criado
-from MaterialGlobal.models import GlobalMaterial, MaterialDescription
-GlobalMaterial.objects.get(material_number="MAT1000001")
-MaterialDescription.objects.get(material__material_number="MAT1000001", language="EN")
+advance_request_by_rule(
+    cr, role="REQUESTER", action="reject",
+    client_code="Lilly", table_key="route_create_material"
+)
+cr.refresh_from_db()
+print("Após reject:", cr.status)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from Governance.models import MaterialCreationRequest
+from Governance.services.workflow import advance_request_by_rule
+
+User = get_user_model()
+requester = User.objects.create_user(
+    username="req_fail",
+    email="req_fail@example.com",
+    password="test1234",
+)
+
+payload = {"material_number": "500000000000000001"}
+
+cr = MaterialCreationRequest.objects.create(
+    cr_number=f"CR-{timezone.now().timestamp()}".replace(".", ""),
+    requester=requester,
+    status="DRAFT",
+    payload=payload,
+)
+
+advance_request_by_rule(
+    cr, role="REQUESTER", action="submit",
+    client_code="Lilly", table_key="route_create_material"
+)
+advance_request_by_rule(
+    cr, role="GLOBAL_ANALYST", action="approve",
+    client_code="Lilly", table_key="route_create_material"
+)
+cr.refresh_from_db()
+print("Status final:", cr.status)
+print("Erro registrado:", cr.payload.get("last_error"))
