@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'MaterialGlobal',
     'Classification',
     'Governance',
+    'WorkflowRules',
 ]
 
 MIDDLEWARE = [

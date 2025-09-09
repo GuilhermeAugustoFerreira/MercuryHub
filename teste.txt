@@ -1,0 +1,36 @@
+from django.contrib.auth import get_user_model
+from Governance.models import MaterialCreationRequest
+from Governance.services.workflow import advance_request_by_rule
+
+User = get_user_model()
+u = User.objects.first()  # ou crie um: User.objects.create_user(...)
+
+# Cenário SUCESSO
+payload_ok = {
+    "material_number": "MAT1002005",
+    "material_type": "FERT",
+    "industry_sector": "M",
+    "material_group": "001234567",
+    "base_unit_of_measure": "EA",
+    "language": "EN",
+    "description": "Teste de criacao de material",
+}
+
+cr = MaterialCreationRequest.objects.create(
+    cr_number="CR-TEST-OK4",
+    requester=u,
+    status="DRAFT",
+    payload=payload_ok,
+)
+
+print(cr.status)                 # DRAFT
+advance_request_by_rule(cr, role="REQUESTER", action="submit")    # DRAFT -> UNDER_REVIEW_GLOBAL
+cr.refresh_from_db(); print(cr.status)
+
+advance_request_by_rule(cr, role="GLOBAL_TEAM", action="approve")  # UNDER_REVIEW_GLOBAL -> (próximo)
+cr.refresh_from_db(); print(cr.status)
+
+# Verifique se o material foi criado
+from MaterialGlobal.models import GlobalMaterial, MaterialDescription
+GlobalMaterial.objects.get(material_number="MAT1000001")
+MaterialDescription.objects.get(material__material_number="MAT1000001", language="EN")

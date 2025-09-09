@@ -9,7 +9,11 @@ class DecisionTable(models.Model):
     Representa uma tabela de decisão (tipo DMN simplificado).
     Ex: 'route_create_material' ou 'required_fields_create_material'
     """
-    key = models.CharField(max_length=60, unique=True)  # identificador técnico
+    # NEW: identifica o cliente/tenant. Use um código curto estável (ex.: "ACME", "GLOBEX").
+    # Para regras "globais" (fallback), deixe em branco (null).
+    client_code = models.CharField(max_length=40, null=True, blank=True, db_index=True)  # NEW
+
+    key = models.CharField(max_length=60)  # identificador técnico (deixa de ser unique isolado)  # CHANGED
     name = models.CharField(max_length=120)  # nome legível
     description = models.TextField(blank=True, default='')
     is_active = models.BooleanField(default=True)
@@ -18,9 +22,16 @@ class DecisionTable(models.Model):
         db_table = 'decision_table'
         verbose_name = 'Decision Table'
         verbose_name_plural = 'Decision Tables'
+        # NEW: a combinação (cliente, key) é única. Permite mesma 'key' para clientes diferentes.
+        unique_together = (('client_code', 'key'),)  # NEW
+        indexes = [
+            models.Index(fields=['client_code', 'key']),  # NEW (acelera lookup)
+            models.Index(fields=['is_active']),           # NEW (filtro comum)
+        ]
 
     def __str__(self):
-        return f"{self.key} - {self.name}"
+        tenant = self.client_code or 'GLOBAL'
+        return f"[{tenant}] {self.key} - {self.name}"
 
 
 class DecisionTableVersion(models.Model):
@@ -55,9 +66,13 @@ class DecisionTableVersion(models.Model):
         db_table = 'decision_table_version'
         unique_together = ('table', 'version')
         ordering = ['table', '-version']
+        indexes = [
+            models.Index(fields=['status', 'valid_from', 'valid_to']),  # NEW (seleção de versão vigente)
+        ]
 
     def __str__(self):
-        return f"{self.table.key} v{self.version} ({self.status})"
+        tenant = self.table.client_code or 'GLOBAL'
+        return f"[{tenant}] {self.table.key} v{self.version} ({self.status})"
 
 
 class RuleTestCase(models.Model):
