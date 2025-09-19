@@ -140,3 +140,509 @@ advance_request_by_rule(
 cr.refresh_from_db()
 print("Status final:", cr.status)
 print("Erro registrado:", cr.payload.get("last_error"))
+
+
+____________________________________________
+
+
+Cria cararacteristicas na CABN
+
+# === Cole no python manage.py shell ===
+from django.db import transaction
+from Classification.models import Characteristic
+
+CLIENT = "100"  # ajuste se precisar
+
+# Listas de características (apenas nomes) que você já definiu
+DISJUNTOR_CARACS = [
+    "TIPO",
+    "NUMERO POLOS",
+    "TENSAO NOMINAL",
+    "CAPACIDADE RUPTURA",
+    "CURVA DISPARO",
+    "CORRENTE NOMINAL",
+    "ACIONAMENTO",
+    "POSICAO COMANDO",
+    "CONTATO AUXILIAR",
+    "TENSAO BOBINA ABERTURA",
+    "TENSAO BOBINA FECHAMENTO",
+    "NBI",
+    "NORMA",
+    "AJUSTE RELE",
+    "FIXACAO",
+    "DIMENSOES",
+    "DISTANCIA ENTRE POLOS",
+    "ACESSORIOS",
+    "DADOS COMPLEMENTARES",
+    "FABRICANTE",
+    "REFERENCIA",
+]
+
+PARAFUSO_CARACS = [
+    "TIPO",
+    "DISPOSITIVO APERTO",
+    "DIAMETRO",
+    "ROSCA",
+    "COMPRIMENTO TOTAL",
+    "MATERIAL",
+    "TRATAMENTO SUPERFICIE",
+    "DISPOSICAO ROSCA",
+    "COMPRIMENTO ROSCA",
+    "PASSO",
+    "NORMA",
+    "CLASSE RESISTENCIA",
+    "ACESSORIOS",
+    "DADOS COMPLEMENTARES",
+    "FABRICANTE",
+    "REFERENCIA",
+]
+
+# União (evita duplicar nomes em comum, ex.: TIPO, NORMA, etc.)
+ALL_CARACS = sorted(set(DISJUNTOR_CARACS) | set(PARAFUSO_CARACS))
+
+DEFAULTS = dict(
+    archive_counter="0000",
+    data_type="CHAR",            # char por padrão
+    character_length=40,         # um pouco maior para folga
+    case_sensitive=False,
+    entry_required=False,
+    single_value=True,
+    multilingual=False,
+    display_allowed_values="X",  # exibe valores permitidos
+    display_assigned_values="X", # exibe valores atribuídos
+)
+
+created, existed = [], []
+
+with transaction.atomic():
+    for name in ALL_CARACS:
+        obj, was_created = Characteristic.objects.get_or_create(
+            client=CLIENT,
+            name=name,
+            defaults=DEFAULTS,
+        )
+        if was_created:
+            created.append(name)
+        else:
+            # Se quiser atualizar defaults quando já existir, descomente abaixo:
+            # for k, v in DEFAULTS.items():
+            #     setattr(obj, k, getattr(obj, k) if getattr(obj, k) not in [None, ""] else v)
+            # obj.save()
+            existed.append(name)
+
+print("\n=== CABN: resumo da criação de características ===")
+print(f"Cliente: {CLIENT}")
+print(f"Criadas   ({len(created)}): {created}")
+print(f"Já existiam ({len(existed)}): {existed}")
+print("\n✅ Pronto! Somente as características (CABN) foram cadastradas/garantidas.")
+
+____________________________________________
+
+Cria classe KLAH
+
+# === Cole no python manage.py shell ===
+from django.db import transaction
+from Classification.models import ClassHeader
+
+CLIENT = "100"   # ajuste conforme seu mandante/cliente no SAP
+CLASS_GROUP = "MERC"  # agrupe como preferir
+CLASS_TYPE = "001"    # tipo de classe (ex.: 001 = material)
+
+# Definições das duas classes a serem criadas no KLAH (ClassHeader)
+CLASS_DEFS = {
+    "DISJUNTOR_MERC": {
+        "internal_class_number": "0000000001",
+        "class_type": CLASS_TYPE,
+        "class_status": "1",
+        "class_group": CLASS_GROUP,
+        "characteristics_table": "CABN",
+        "usage_in_superior_classes": "1",
+        "multiple_selection_allowed": False,
+    },
+    "PARAFUSO_MERC": {
+        "internal_class_number": "0000000002",
+        "class_type": CLASS_TYPE,
+        "class_status": "1",
+        "class_group": CLASS_GROUP,
+        "characteristics_table": "CABN",
+        "usage_in_superior_classes": "1",
+        "multiple_selection_allowed": False,
+    },
+}
+
+updated, created, existed = [], [], []
+
+with transaction.atomic():
+    for class_name, meta in CLASS_DEFS.items():
+        ch, was_created = ClassHeader.objects.get_or_create(
+            client=CLIENT,
+            internal_class_number=meta["internal_class_number"],
+            defaults=dict(
+                class_type=meta["class_type"],
+                class_name=class_name,
+                class_status=meta["class_status"],
+                class_group=meta["class_group"],
+                characteristics_table=meta["characteristics_table"],
+                usage_in_superior_classes=meta["usage_in_superior_classes"],
+                multiple_selection_allowed=meta["multiple_selection_allowed"],
+            ),
+        )
+        if was_created:
+            created.append(class_name)
+        else:
+            # Garante sincronismo de metadados caso algo tenha mudado
+            fields_to_check = {
+                "class_type": meta["class_type"],
+                "class_name": class_name,
+                "class_status": meta["class_status"],
+                "class_group": meta["class_group"],
+                "characteristics_table": meta["characteristics_table"],
+                "usage_in_superior_classes": meta["usage_in_superior_classes"],
+                "multiple_selection_allowed": meta["multiple_selection_allowed"],
+            }
+            dirty = False
+            for f, v in fields_to_check.items():
+                if getattr(ch, f) != v:
+                    setattr(ch, f, v)
+                    dirty = True
+            if dirty:
+                ch.save(update_fields=list(fields_to_check.keys()))
+                updated.append(class_name)
+            else:
+                existed.append(class_name)
+
+print("\n=== KLAH / ClassHeader — resumo ===")
+print(f"Cliente: {CLIENT}")
+print(f"Criadas  ({len(created)}): {created}")
+print(f"Atualizadas ({len(updated)}): {updated}")
+print(f"Já existiam ({len(existed)}): {existed}")
+print("\n✅ Pronto! Somente as classes (KLAH) foram cadastradas/garantidas.")
+
+# Dica: se quiser ver como ficou, rode:
+# from Classification.models import ClassHeader
+# list(ClassHeader.objects.filter(client=CLIENT).values('internal_class_number','class_name','class_type','class_group'))
+
+
+____________________________________________
+
+
+Vincula classe a características na KSSL
+
+
+from django.db import transaction
+from Classification.models import ClassHeader, Characteristic, ClassCharacteristic
+
+CLIENT = "100"
+CLASS_NAME = "DISJUNTOR_MERC"
+
+ORDER = [
+    "TIPO",
+    "NUMERO POLOS",
+    "TENSAO NOMINAL",
+    "CAPACIDADE RUPTURA",
+    "CURVA DISPARO",
+    "CORRENTE NOMINAL",
+    "ACIONAMENTO",
+    "POSICAO COMANDO",
+    "CONTATO AUXILIAR",
+    "TENSAO BOBINA ABERTURA",
+    "TENSAO BOBINA FECHAMENTO",
+    "NBI",
+    "NORMA",
+    "AJUSTE RELE",
+    "FIXACAO",
+    "DIMENSOES",
+    "DISTANCIA ENTRE POLOS",
+    "ACESSORIOS",
+    "DADOS COMPLEMENTARES",
+    "FABRICANTE",
+    "REFERENCIA",
+]
+
+ch = ClassHeader.objects.get(client=CLIENT, class_name=CLASS_NAME)
+
+created, updated = [], []
+
+with transaction.atomic():
+    for idx, name in enumerate(ORDER, start=1):
+        c = Characteristic.objects.get(client=CLIENT, name=name)
+        cc, was_created = ClassCharacteristic.objects.get_or_create(
+            client=CLIENT,
+            class_header=ch,
+            characteristic=c,
+            defaults=dict(
+                item_number=f"{idx:03d}",
+                archive_counter="0000",
+                object_dependent_char="0",
+            ),
+        )
+        if was_created:
+            created.append(name)
+        else:
+            # garantir que a ordem esteja certa
+            if cc.item_number != f"{idx:03d}":
+                cc.item_number = f"{idx:03d}"
+                cc.save(update_fields=["item_number"])
+                updated.append(name)
+
+print("\n=== KSML (DISJUNTOR) — resumo ===")
+print(f"Criados: {created}")
+print(f"Atualizados: {updated}")
+
+# conferindo ordem final
+for cc in ClassCharacteristic.objects.filter(client=CLIENT, class_header=ch).order_by("item_number"):
+    print(cc.item_number, "-", cc.characteristic.name)
+
+
+
+____________________________________________
+
+
+Popula CAWN 
+
+
+# === PASSO 4: CAWN (valores permitidos do DISJUNTOR) ===
+from django.db import transaction
+from Classification.models import Characteristic, CharacteristicValue
+
+CLIENT = "100"
+
+DISJUNTOR_VALUES = {
+    "TIPO": ["Termomagnético", "Motor"],
+    "NUMERO POLOS": ["1P", "3P"],
+    "TENSAO NOMINAL": ["220V", "380V"],
+    "CAPACIDADE RUPTURA": ["6kA", "10kA"],
+    "CURVA DISPARO": ["B", "C"],
+    "CORRENTE NOMINAL": ["10A", "20A"],
+    "ACIONAMENTO": ["Manual", "Motorizado"],
+    "POSICAO COMANDO": ["Frontal", "Lateral"],
+    "CONTATO AUXILIAR": ["Sim", "Não"],
+    "TENSAO BOBINA ABERTURA": ["110V", "220V"],
+    "TENSAO BOBINA FECHAMENTO": ["110V", "220V"],
+    "NBI": ["6kV", "8kV"],
+    "NORMA": ["IEC 60947", "NBR NM 60898"],
+    "AJUSTE RELE": ["Fixo", "Regulável"],
+    "FIXACAO": ["Trilho DIN", "Painel"],
+    "DIMENSOES": ["45mm x 80mm x 70mm", "54mm x 90mm x 80mm"],
+    "DISTANCIA ENTRE POLOS": ["17.5mm", "27mm"],
+    "ACESSORIOS": ["Contato auxiliar", "Bobina shunt"],
+    "DADOS COMPLEMENTARES": ["Aplicação industrial", "Uso residencial"],
+    "FABRICANTE": ["Fabricante X", "Fabricante Y"],
+    "REFERENCIA": ["DISJ-001", "DISJ-002"],
+}
+
+def next_counter(ch):
+    """gera próximo value_counter para a característica"""
+    last = (
+        CharacteristicValue.objects.filter(client=CLIENT, internal_characteristic=ch)
+        .order_by("-value_counter")
+        .first()
+    )
+    if not last:
+        return "0001"
+    try:
+        return f"{int(last.value_counter) + 1:04d}"
+    except Exception:
+        return "0001"
+
+created, existed = [], []
+
+with transaction.atomic():
+    for cname, values in DISJUNTOR_VALUES.items():
+        ch = Characteristic.objects.get(client=CLIENT, name=cname)
+        for v in values:
+            obj = CharacteristicValue.objects.filter(
+                client=CLIENT, internal_characteristic=ch, value=v
+            ).first()
+            if obj:
+                existed.append((cname, v))
+            else:
+                vc = next_counter(ch)
+                CharacteristicValue.objects.create(
+                    client=CLIENT,
+                    internal_characteristic=ch,
+                    value_counter=vc,
+                    archive_counter="0000",
+                    value=v,
+                )
+                created.append((cname, v))
+
+print("\n=== CAWN (DISJUNTOR) — resumo ===")
+print(f"Criados    ({len(created)}): {created}")
+print(f"Já existiam ({len(existed)}): {existed}")
+
+# conferindo quantidade final
+for cname in DISJUNTOR_VALUES.keys():
+    ch = Characteristic.objects.get(client=CLIENT, name=cname)
+    total = CharacteristicValue.objects.filter(client=CLIENT, internal_characteristic=ch).count()
+    print(f"{cname}: {total} valores no banco")
+
+
+____________________________________________
+
+CAWNT
+
+# === PASSO 5: CAWNT (apenas DISJUNTOR) — descrição = valor técnico ===
+from django.db import transaction
+from Classification.models import Characteristic, CharacteristicValue, CharacteristicValueText
+
+CLIENT = "100"
+LANG = "P"              # SAP SPRAS (1 char). Ajuste se necessário.
+ARCHIVE = "0000"        # ADZHL
+
+DISJUNTOR_CARACS = [
+    "TIPO",
+    "NUMERO POLOS",
+    "TENSAO NOMINAL",
+    "CAPACIDADE RUPTURA",
+    "CURVA DISPARO",
+    "CORRENTE NOMINAL",
+    "ACIONAMENTO",
+    "POSICAO COMANDO",
+    "CONTATO AUXILIAR",
+    "TENSAO BOBINA ABERTURA",
+    "TENSAO BOBINA FECHAMENTO",
+    "NBI",
+    "NORMA",
+    "AJUSTE RELE",
+    "FIXACAO",
+    "DIMENSOES",
+    "DISTANCIA ENTRE POLOS",
+    "ACESSORIOS",
+    "DADOS COMPLEMENTARES",
+    "FABRICANTE",
+    "REFERENCIA",
+]
+
+# pega todos os Characteristics do DISJUNTOR
+chars = list(
+    Characteristic.objects.filter(client=CLIENT, name__in=DISJUNTOR_CARACS)
+)
+
+created, existed, updated = [], [], []
+
+with transaction.atomic():
+    for ch in chars:
+        # pega todos os valores técnicos (CAWN) dessa característica
+        values = CharacteristicValue.objects.filter(
+            client=CLIENT, internal_characteristic=ch
+        )
+        for cv in values:
+            # chave única: (characteristic_value, counter, language)
+            obj, was_created = CharacteristicValueText.objects.get_or_create(
+                client=CLIENT,
+                characteristic_value=cv,
+                counter=cv.value_counter,     # ATZHL deve casar com o de CAWN
+                language=LANG,                 # SPRAS (1 char)
+                defaults={
+                    "archive_counter": ARCHIVE,
+                    "description": cv.value,   # ATWTB = mesmo texto do ATWRT
+                },
+            )
+            if was_created:
+                created.append((ch.name, cv.value, cv.value_counter))
+            else:
+                # se já existe mas a descrição estiver diferente/vazia, atualiza
+                new_desc = cv.value or ""
+                if obj.description != new_desc or obj.archive_counter != ARCHIVE:
+                    obj.description = new_desc
+                    obj.archive_counter = ARCHIVE
+                    obj.save(update_fields=["description", "archive_counter"])
+                    updated.append((ch.name, cv.value, cv.value_counter))
+                else:
+                    existed.append((ch.name, cv.value, cv.value_counter))
+
+print("\n=== CAWNT (DISJUNTOR) — resumo ===")
+print(f"Criados     ({len(created)}): {created}")
+print(f"Atualizados ({len(updated)}): {updated}")
+print(f"Já existiam ({len(existed)}): {existed}")
+
+# conferência rápida
+sample = CharacteristicValueText.objects.filter(
+    client=CLIENT, language=LANG, characteristic_value__internal_characteristic__in=chars
+)[:10]
+print("\nExemplos de registros em CAWNT:")
+for t in sample:
+    print(
+        t.characteristic_value.internal_characteristic.name,
+        "| ATZHL:", t.counter,
+        "| ATWRT:", t.characteristic_value.value,
+        "| ATWTB:", t.description
+    )
+
+____________________________________________
+
+
+Criacao de material com Classification
+
+from django.db import transaction
+from Classification.services import create_material_with_classification
+from MaterialGlobal.models import GlobalMaterial, MaterialDescription
+
+CLIENT = "100"
+
+# dados do material dummy
+material_data = {
+    "material_number": "MAT-DISJ-TEST",
+    "material_type": "ZDIS",          # tipo de material dummy
+    "industry_sector": "M",           # setor
+    "material_group": "000000123",    # grupo de materiais
+    "base_unit_of_measure": "UN",     # unidade base
+}
+
+description_data = {
+    "language": "PT",
+    "description": "Disjuntor dummy de teste"
+}
+
+# valores de classificação (todos já existem no CAWN/CAWNT)
+classification_data = {
+    "TIPO": "Termomagnético",
+    "NUMERO POLOS": "1P",
+    "TENSAO NOMINAL": "220V",
+    "CAPACIDADE RUPTURA": "6kA",
+    "CURVA DISPARO": "B",
+    "CORRENTE NOMINAL": "10A",
+    "ACIONAMENTO": "Manual",
+    "POSICAO COMANDO": "Frontal",
+    "CONTATO AUXILIAR": "Sim",
+    "TENSAO BOBINA ABERTURA": "110V",
+    "TENSAO BOBINA FECHAMENTO": "110V",
+    "NBI": "6kV",
+    "NORMA": "IEC 60947",
+    "AJUSTE RELE": "Fixo",
+    "FIXACAO": "Trilho DIN",
+    "DIMENSOES": "45mm x 80mm x 70mm",
+    "DISTANCIA ENTRE POLOS": "17.5mm",
+    "ACESSORIOS": "Contato auxiliar",
+    "DADOS COMPLEMENTARES": "Aplicação industrial",
+    "FABRICANTE": "Fabricante X",
+    "REFERENCIA": "DISJ-001",
+}
+
+# cria material com classificação
+with transaction.atomic():
+    result = create_material_with_classification(
+        material_data=material_data,
+        description_data=description_data,
+        class_name="DISJUNTOR_MERC",
+        classification_data=classification_data,
+        client=CLIENT,
+    )
+
+# validação
+mat = GlobalMaterial.objects.get(material_number="MAT-DISJ-TEST")
+desc = MaterialDescription.objects.get(material=mat, language="PT")
+
+print("\n=== Material criado ===")
+print("Número:", mat.material_number)
+print("Tipo:", mat.material_type)
+print("Setor:", mat.industry_sector)
+print("Descrição PT:", desc.description)
+
+print("\n=== Classificação ===")
+print("Entradas de classificação atribuídas:", len(result.classification_entries))
+print("Valores criados dinamicamente:", result.created_characteristic_values)  # deve estar vazio, pois usamos só valores existentes
+
+
+____________________________________________

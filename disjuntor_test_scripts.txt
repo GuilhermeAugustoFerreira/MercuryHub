@@ -1,0 +1,225 @@
+
+# === PASSO 1: CABN (apenas características do DISJUNTOR) ===
+from django.db import transaction
+from Classification.models import Characteristic
+
+CLIENT = "100"  # ajuste se necessário
+
+DISJUNTOR_CARACS = [
+    "TIPO","NUMERO POLOS","TENSAO NOMINAL","CAPACIDADE RUPTURA","CURVA DISPARO",
+    "CORRENTE NOMINAL","ACIONAMENTO","POSICAO COMANDO","CONTATO AUXILIAR",
+    "TENSAO BOBINA ABERTURA","TENSAO BOBINA FECHAMENTO","NBI","NORMA","AJUSTE RELE",
+    "FIXACAO","DIMENSOES","DISTANCIA ENTRE POLOS","ACESSORIOS","DADOS COMPLEMENTARES",
+    "FABRICANTE","REFERENCIA",
+]
+
+DEFAULTS = dict(
+    archive_counter="0000", data_type="CHAR", character_length=40,
+    case_sensitive=False, entry_required=False, single_value=True,
+    multilingual=False, display_allowed_values="X", display_assigned_values="X",
+)
+
+created, existed = [], []
+
+with transaction.atomic():
+    for name in DISJUNTOR_CARACS:
+        obj, was_created = Characteristic.objects.get_or_create(
+            client=CLIENT, name=name, defaults=DEFAULTS,
+        )
+        if was_created: created.append(name)
+        else: existed.append(name)
+
+print("CABN Criadas:", created)
+print("CABN Já existiam:", existed)
+
+_______________________________
+
+# === PASSO 2: KLAH (ClassHeader — apenas DISJUNTOR) ===
+from django.db import transaction
+from Classification.models import ClassHeader
+
+CLIENT = "100"
+CLASS_TYPE = "001"
+CLASS_GROUP = "MERC"
+
+CLASS_NAME = "DISJUNTOR_MERC"
+INTERNAL_CLASS_NUMBER = "0000000001"
+
+meta = dict(
+    class_type=CLASS_TYPE, class_name=CLASS_NAME, class_status="1",
+    class_group=CLASS_GROUP, characteristics_table="CABN",
+    usage_in_superior_classes="1", multiple_selection_allowed=False,
+)
+
+with transaction.atomic():
+    ch, created = ClassHeader.objects.get_or_create(
+        client=CLIENT, internal_class_number=INTERNAL_CLASS_NUMBER, defaults=meta,
+    )
+    if not created:
+        dirty = False
+        for f, v in meta.items():
+            if getattr(ch, f) != v:
+                setattr(ch, f, v)
+                dirty = True
+        if dirty: ch.save(update_fields=list(meta.keys())); status_msg = "atualizado"
+        else: status_msg = "já existia"
+    else: status_msg = "criado"
+
+print("KLAH Status:", status_msg)
+
+_______________________________
+
+# === PASSO 3: KSML (vincular características DISJUNTOR) ===
+from django.db import transaction
+from Classification.models import ClassHeader, Characteristic, ClassCharacteristic
+
+CLIENT = "100"
+CLASS_NAME = "DISJUNTOR_MERC"
+
+ORDER = [
+    "TIPO","NUMERO POLOS","TENSAO NOMINAL","CAPACIDADE RUPTURA","CURVA DISPARO",
+    "CORRENTE NOMINAL","ACIONAMENTO","POSICAO COMANDO","CONTATO AUXILIAR",
+    "TENSAO BOBINA ABERTURA","TENSAO BOBINA FECHAMENTO","NBI","NORMA","AJUSTE RELE",
+    "FIXACAO","DIMENSOES","DISTANCIA ENTRE POLOS","ACESSORIOS","DADOS COMPLEMENTARES",
+    "FABRICANTE","REFERENCIA",
+]
+
+ch = ClassHeader.objects.get(client=CLIENT, class_name=CLASS_NAME)
+created, updated = [], []
+
+with transaction.atomic():
+    for idx, name in enumerate(ORDER, start=1):
+        c = Characteristic.objects.get(client=CLIENT, name=name)
+        cc, was_created = ClassCharacteristic.objects.get_or_create(
+            client=CLIENT, class_header=ch, characteristic=c,
+            defaults=dict(item_number=f"{idx:03d}", archive_counter="0000", object_dependent_char="0"),
+        )
+        if was_created: created.append(name)
+        else:
+            if cc.item_number != f"{idx:03d}":
+                cc.item_number = f"{idx:03d}"
+                cc.save(update_fields=["item_number"])
+                updated.append(name)
+
+print("KSML Criados:", created)
+print("KSML Atualizados:", updated)
+
+_______________________________
+
+# === PASSO 4: CAWN (valores permitidos DISJUNTOR) ===
+from django.db import transaction
+from Classification.models import Characteristic, CharacteristicValue
+
+CLIENT = "100"
+
+DISJUNTOR_VALUES = {
+    "TIPO": ["Termomagnético","Motor"],
+    "NUMERO POLOS": ["1P","3P"],
+    "TENSAO NOMINAL": ["220V","380V"],
+    "CAPACIDADE RUPTURA": ["6kA","10kA"],
+    "CURVA DISPARO": ["B","C"],
+    "CORRENTE NOMINAL": ["10A","20A"],
+    "ACIONAMENTO": ["Manual","Motorizado"],
+    "POSICAO COMANDO": ["Frontal","Lateral"],
+    "CONTATO AUXILIAR": ["Sim","Não"],
+    "TENSAO BOBINA ABERTURA": ["110V","220V"],
+    "TENSAO BOBINA FECHAMENTO": ["110V","220V"],
+    "NBI": ["6kV","8kV"],
+    "NORMA": ["IEC 60947","NBR NM 60898"],
+    "AJUSTE RELE": ["Fixo","Regulável"],
+    "FIXACAO": ["Trilho DIN","Painel"],
+    "DIMENSOES": ["45mm x 80mm x 70mm","54mm x 90mm x 80mm"],
+    "DISTANCIA ENTRE POLOS": ["17.5mm","27mm"],
+    "ACESSORIOS": ["Contato auxiliar","Bobina shunt"],
+    "DADOS COMPLEMENTARES": ["Aplicação industrial","Uso residencial"],
+    "FABRICANTE": ["Fabricante X","Fabricante Y"],
+    "REFERENCIA": ["DISJ-001","DISJ-002"],
+}
+
+def next_counter(ch):
+    last = CharacteristicValue.objects.filter(client=CLIENT, internal_characteristic=ch).order_by("-value_counter").first()
+    return f"{int(last.value_counter)+1:04d}" if last else "0001"
+
+created = []
+with transaction.atomic():
+    for cname, values in DISJUNTOR_VALUES.items():
+        ch = Characteristic.objects.get(client=CLIENT, name=cname)
+        for v in values:
+            obj = CharacteristicValue.objects.filter(client=CLIENT, internal_characteristic=ch, value=v).first()
+            if not obj:
+                vc = next_counter(ch)
+                CharacteristicValue.objects.create(client=CLIENT, internal_characteristic=ch,
+                    value_counter=vc, archive_counter="0000", value=v)
+                created.append((cname,v))
+
+print("CAWN Criados:", created)
+
+_______________________________
+
+# === PASSO 5: CAWNT (descrições dos valores DISJUNTOR) ===
+from django.db import transaction
+from Classification.models import Characteristic, CharacteristicValue, CharacteristicValueText
+
+CLIENT = "100"
+LANG = "P"
+ARCHIVE = "0000"
+
+DISJUNTOR_CARACS = [
+    "TIPO","NUMERO POLOS","TENSAO NOMINAL","CAPACIDADE RUPTURA","CURVA DISPARO",
+    "CORRENTE NOMINAL","ACIONAMENTO","POSICAO COMANDO","CONTATO AUXILIAR",
+    "TENSAO BOBINA ABERTURA","TENSAO BOBINA FECHAMENTO","NBI","NORMA","AJUSTE RELE",
+    "FIXACAO","DIMENSOES","DISTANCIA ENTRE POLOS","ACESSORIOS","DADOS COMPLEMENTARES",
+    "FABRICANTE","REFERENCIA",
+]
+
+chars = Characteristic.objects.filter(client=CLIENT, name__in=DISJUNTOR_CARACS)
+with transaction.atomic():
+    for ch in chars:
+        values = CharacteristicValue.objects.filter(client=CLIENT, internal_characteristic=ch)
+        for cv in values:
+            CharacteristicValueText.objects.get_or_create(
+                client=CLIENT, characteristic_value=cv, counter=cv.value_counter, language=LANG,
+                defaults={"archive_counter": ARCHIVE, "description": cv.value},
+            )
+
+print("CAWNT criado/garantido para todos valores do DISJUNTOR.")
+
+_______________________________
+
+# === PASSO 6: Criar material dummy com classificação (DISJUNTOR) ===
+from django.db import transaction
+from Classification.services import create_material_with_classification
+from MaterialGlobal.models import GlobalMaterial, MaterialDescription
+
+CLIENT = "100"
+
+material_data = {
+    "material_number": "MAT-DISJ-TEST",
+    "material_type": "ZDIS",
+    "industry_sector": "M",
+    "material_group": "000000123",
+    "base_unit_of_measure": "UN",
+}
+description_data = {"language": "PT","description": "Disjuntor dummy de teste"}
+classification_data = {
+    "TIPO": "Termomagnético","NUMERO POLOS": "1P","TENSAO NOMINAL": "220V",
+    "CAPACIDADE RUPTURA": "6kA","CURVA DISPARO": "B","CORRENTE NOMINAL": "10A",
+    "ACIONAMENTO": "Manual","POSICAO COMANDO": "Frontal","CONTATO AUXILIAR": "Sim",
+    "TENSAO BOBINA ABERTURA": "110V","TENSAO BOBINA FECHAMENTO": "110V",
+    "NBI": "6kV","NORMA": "IEC 60947","AJUSTE RELE": "Fixo","FIXACAO": "Trilho DIN",
+    "DIMENSOES": "45mm x 80mm x 70mm","DISTANCIA ENTRE POLOS": "17.5mm",
+    "ACESSORIOS": "Contato auxiliar","DADOS COMPLEMENTARES": "Aplicação industrial",
+    "FABRICANTE": "Fabricante X","REFERENCIA": "DISJ-001",
+}
+
+with transaction.atomic():
+    result = create_material_with_classification(
+        material_data=material_data, description_data=description_data,
+        class_name="DISJUNTOR_MERC", classification_data=classification_data, client=CLIENT,
+    )
+
+mat = GlobalMaterial.objects.get(material_number="MAT-DISJ-TEST")
+desc = MaterialDescription.objects.get(material=mat, language="PT")
+print("Material criado:", mat.material_number, "-", desc.description)
+print("Entradas de classificação:", len(result.classification_entries))
+print("Novos valores criados:", result.created_characteristic_values)
