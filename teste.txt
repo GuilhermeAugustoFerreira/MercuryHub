@@ -646,3 +646,134 @@ print("Valores criados dinamicamente:", result.created_characteristic_values)  #
 
 
 ____________________________________________
+CRIACAO DE MATERIAL
+
+
+#!/usr/bin/env pwsh
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# ===============================
+# 1) Setup do ambiente
+# ===============================
+$SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$PROJECT_ROOT = Resolve-Path "$SCRIPT_DIR\.."
+Set-Location $PROJECT_ROOT
+
+Write-Host "🚀 Iniciando script de criação de material via workflow..."
+
+# Garantir migrations
+python manage.py migrate --noinput
+
+# ===============================
+# 2) Código Python que será executado no Django Shell
+# ===============================
+$pythonCode = @"
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from django.db import transaction
+from django.db.models import Max
+
+from Governance.models import MaterialCreationRequest
+from Governance.services.workflow import advance_request_by_rule
+from MaterialGlobal.models import GlobalMaterial, MaterialDescription
+from WorkflowRules.models import DecisionTable
+
+
+# ---------------------------------
+# Etapa 0: Setup inicial
+# ---------------------------------
+CLIENT_CODE = "Lilly"
+TABLE_KEY = "route_create_material"
+
+payload = {
+    "material_number": "300000000000000055",
+    "material_type": "FERT",
+    "industry_sector": "M",
+    "material_group": "000000001",
+    "base_unit_of_measure": "PC",
+    "language": "EN",
+    "description": "Workflow test material",
+    "client_code": CLIENT_CODE,
+}
+
+
+# ---------------------------------
+# Etapa 1: Criar usuário REQUESTER
+# ---------------------------------
+User = get_user_model()
+requester, _ = User.objects.get_or_create(
+    username="workflow_requester",
+    defaults={"email": "workflow_requester@example.com"},
+)
+requester.set_password("test1234")
+requester.save(update_fields=["password"])
+print(f"👤 Requester garantido: {requester.username}")
+
+
+# ---------------------------------
+# Etapa 2: Criar Request em DRAFT
+# ---------------------------------
+cr = MaterialCreationRequest.objects.create(
+    cr_number=f"CR-{timezone.now().strftime('%Y%m%d%H%M%S%f')}",
+    requester=requester,
+    status="DRAFT",
+    payload=payload,
+)
+print(f"📌 Request criado: {cr.cr_number} status={cr.status}")
+
+
+# ---------------------------------
+# Etapa 3: REQUESTER envia (submit)
+# ---------------------------------
+advance_request_by_rule(
+    cr,
+    role="REQUESTER",
+    action="submit",
+    client_code=CLIENT_CODE,
+    table_key=TABLE_KEY,
+)
+cr.refresh_from_db()
+print(f"➡️ Após submit: status={cr.status}")
+
+
+# ---------------------------------
+# Etapa 4: GLOBAL_ANALYST aprova
+# ---------------------------------
+advance_request_by_rule(
+    cr,
+    role="GLOBAL_ANALYST",
+    action="approve",
+    client_code=CLIENT_CODE,
+    table_key=TABLE_KEY,
+)
+cr.refresh_from_db()
+print(f"✅ Após approve: status={cr.status} approved_at={cr.approved_at}")
+
+
+# ---------------------------------
+# Etapa 5: Material é efetivamente criado
+# ---------------------------------
+material = GlobalMaterial.objects.get(material_number=payload["material_number"][:18])
+description = MaterialDescription.objects.get(
+    material=material,
+    language=payload["language"].upper()[:2],
+)
+
+print("🎉 Material criado com sucesso:", {
+    "material_number": material.material_number,
+    "material_type": material.material_type,
+    "industry_sector": material.industry_sector,
+    "material_group": material.material_group,
+    "base_unit_of_measure": material.base_unit_of_measure,
+    "description": description.description,
+    "language": description.language,
+})
+
+
+# ===============================
+# 3) Rodar workflow no Django Shell
+# ===============================
+python manage.py shell <<< $pythonCode
+
+

@@ -17,6 +17,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from Classification.views import ClassHeaderViewSet, CharacteristicViewSet, CharacteristicValueViewSet
+
+router = DefaultRouter()
+router.register(r'classes', ClassHeaderViewSet, basename='classheader')
+router.register(r'characteristics', CharacteristicViewSet, basename='characteristic')
+router.register(r'characteristic-values', CharacteristicValueViewSet, basename='charactervalue')
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', include(router.urls)),
 ]

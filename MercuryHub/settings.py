@@ -37,6 +37,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # apps de terceiros
+    'rest_framework',        # ✅ adicione isto
+    'django_filters',        # (opcional, mas útil)
+    'corsheaders',           # (se já estiver usando CORS)
+
     'MaterialLocal',
     'MaterialGlobal',
     'Classification',
