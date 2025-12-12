@@ -687,7 +687,7 @@ CLIENT_CODE = "Lilly"
 TABLE_KEY = "route_create_material"
 
 payload = {
-    "material_number": "300000000000000055",
+    "material_number": "3000000000000000999",
     "material_type": "FERT",
     "industry_sector": "M",
     "material_group": "000000001",
