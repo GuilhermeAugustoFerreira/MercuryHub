@@ -3,13 +3,34 @@ from django.utils import timezone
 from Governance.models import MaterialCreationRequest
 from Governance.services.workflow import advance_request_by_rule
 
+#from django.contrib.auth import get_user_model
+
 #CENARIO DE APROVACAO
+
+
+User = get_user_model()
+
+requester = (
+    User.objects.filter(is_active=True)
+    .order_by("id")
+    .first()
+)
+
+
 
 User = get_user_model()
 requester = User.objects.create_user(
     username="req_success",
     email="req_success@example.com",
     password="test1234",
+)
+
+User = get_user_model()
+
+requester = (
+    User.objects.filter(is_active=True)
+    .order_by("id")
+    .first()
 )
 
 payload = {
@@ -112,6 +133,19 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from Governance.models import MaterialCreationRequest
 from Governance.services.workflow import advance_request_by_rule
+from django.contrib.auth import get_user_model
+
+
+
+User = get_user_model()
+
+requester = (
+    User.objects.filter(is_active=True)
+    .order_by("id")
+    .first()
+)
+
+
 
 User = get_user_model()
 requester = User.objects.create_user(
@@ -120,7 +154,7 @@ requester = User.objects.create_user(
     password="test1234",
 )
 
-payload = {"material_number": "500000000000000001"}
+payload = {"material_number": "157"}
 
 cr = MaterialCreationRequest.objects.create(
     cr_number=f"CR-{timezone.now().timestamp()}".replace(".", ""),
@@ -583,7 +617,7 @@ CLIENT = "100"
 
 # dados do material dummy
 material_data = {
-    "material_number": "MAT-DISJ-TEST",
+    "material_number": "GUILHERME1001",
     "material_type": "ZDIS",          # tipo de material dummy
     "industry_sector": "M",           # setor
     "material_group": "000000123",    # grupo de materiais
@@ -592,7 +626,7 @@ material_data = {
 
 description_data = {
     "language": "PT",
-    "description": "Disjuntor dummy de teste"
+    "description": "Disjuntor dummy de teste GUILHERME1001"
 }
 
 # valores de classificação (todos já existem no CAWN/CAWNT)
@@ -616,8 +650,8 @@ classification_data = {
     "DISTANCIA ENTRE POLOS": "17.5mm",
     "ACESSORIOS": "Contato auxiliar",
     "DADOS COMPLEMENTARES": "Aplicação industrial",
-    "FABRICANTE": "Fabricante X",
-    "REFERENCIA": "DISJ-001",
+    "FABRICANTE": "SIEMENS",
+    "REFERENCIA": "DISJ-0050",
 }
 
 # cria material com classificação
@@ -687,13 +721,13 @@ CLIENT_CODE = "Lilly"
 TABLE_KEY = "route_create_material"
 
 payload = {
-    "material_number": "3000000000000000999",
+    "material_number": "GUILHERME1001",
     "material_type": "FERT",
     "industry_sector": "M",
     "material_group": "000000001",
     "base_unit_of_measure": "PC",
     "language": "EN",
-    "description": "Workflow test material",
+    "description": "Workflow test material GUILHERME1001",
     "client_code": CLIENT_CODE,
 }
 
@@ -709,6 +743,16 @@ requester, _ = User.objects.get_or_create(
 requester.set_password("test1234")
 requester.save(update_fields=["password"])
 print(f"👤 Requester garantido: {requester.username}")
+
+
+
+User = get_user_model()
+
+requester = (
+    User.objects.filter(is_active=True)
+    .order_by("id")
+    .first()
+)
 
 
 # ---------------------------------
