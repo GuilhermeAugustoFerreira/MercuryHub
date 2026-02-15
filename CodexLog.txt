@@ -1,0 +1,20 @@
+2026-01-20 16:47:51 - Criada a pagina de Classes/Caracteristicas com listagem via API /api/characteristics, atualizado o menu lateral para "Classes" apontando para /classes, ajustado o roteamento e habilitado HttpClient no app.
+2026-01-20 17:02:39 - Adicionado proxy do Angular para /api -> http://localhost:8000 para permitir o carregamento dos dados locais.
+2026-01-20 17:09:04 - Simplificada a tabela de caracteristicas para exibir apenas name, data_type e character_length.
+2026-01-20 17:10:40 - Adicionado log de erro no carregamento de caracteristicas com status e URL no console.
+2026-01-20 17:41:43 - Renomeada a secao do menu para Sistema de Classificacao, criada a pagina de valores com classes associadas e botao de adicionar valor, e exposta a API de class-characteristics no backend.
+2026-01-20 22:40:19 - Ajustada a pagina de Valores para listar classes e linkar para detalhes, criada a pagina de detalhes da classe com caracteristicas, e adicionada a API class-details.
+2026-01-20 22:43:25 - Ajustado o serializer de detalhes da classe para buscar caracteristicas via relacao class_links.
+2026-01-20 22:47:26 - Movido o botao "Adicionar valor" da pagina de Valores para a pagina de detalhes da classe.
+2026-01-20 23:12:58 - Criado endpoint POST /api/class-link-bulk/ para vincular caracteristicas a classes seguindo as regras do script.
+2026-01-20 23:26:07 - Criada pagina para adicionar caracteristicas por classe com busca e paginacao, e endpoint para listar caracteristicas disponiveis.
+2026-01-20 23:29:59 - Adicionado botao simples de adicionar em cada caracteristica na pagina de adicionar valor.
+2026-01-20 23:34:28 - Implementada selecao de caracteristicas com botao +, botao Salvar e endpoint para vincular caracteristicas a classe.
+2026-01-21 06:49:51 - Ajustado endpoint de adicionar caracteristicas para evitar conflito com o router (novo caminho /api/class-characteristics-add/).
+2026-01-21 06:56:28 - Aumentado timeout do SQLite para reduzir erros de database is locked.
+2026-01-21 17:37:21 - Adicionada secao Gerenciamento de Materiais com paginas de cadastro, classificacao e tarefas, e endpoint para criar requisicao DRAFT.
+2026-01-21 17:51:59 - Listagem de requests em Minhas Tarefas com nome da etapa e endpoint GET /api/material-requests/.
+2026-01-21 18:07:28 - Adicionado filtro por status e botao de envio para aprovacao em DRAFT, com endpoint de submit.
+2026-01-21 18:20:50 - Permitido usar DecisionTable nao publicada ao submeter request para evitar erro 400 quando so existe versao DRAFT.
+2026-01-21 18:36:59 - Renomeado botao de envio em Minhas Tarefas para "Submeter".
+2026-01-21 18:43:18 - Ajustado fallback da DecisionTable para aceitar qualquer client_code quando nao houver match.

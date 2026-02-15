@@ -37,7 +37,7 @@ def _norm_role(s: str | None) -> str:
 
 # ---------- busca de versão publicada (mantém seu comportamento) ----------
 
-def get_published_version(client_code: str | None, key: str):
+def get_published_version(client_code: str | None, key: str, allow_unpublished: bool = False):
     """
     Busca a versão publicada e vigente da DecisionTable para um cliente (ou GLOBAL).
     """
@@ -46,16 +46,27 @@ def get_published_version(client_code: str | None, key: str):
     qs = DecisionTable.objects.filter(client_code=client_code, key=key, is_active=True)
     if not qs.exists():
         qs = DecisionTable.objects.filter(client_code__isnull=True, key=key, is_active=True)
+    if not qs.exists():
+        qs = DecisionTable.objects.filter(key=key, is_active=True)
 
     table = qs.first()
     if not table:
         return None
 
-    return (
+    published = (
         DecisionTableVersion.objects
         .filter(table=table, status='PUBLISHED')
         .filter(Q(valid_from__isnull=True) | Q(valid_from__lte=now))
         .filter(Q(valid_to__isnull=True)   | Q(valid_to__gte=now))
+        .order_by('-version')
+        .first()
+    )
+    if published or not allow_unpublished:
+        return published
+
+    return (
+        DecisionTableVersion.objects
+        .filter(table=table)
         .order_by('-version')
         .first()
     )
@@ -133,6 +144,7 @@ def advance_request_by_rule(
     action: str,
     client_code: str | None = None,
     table_key: str = "route_create_material",
+    allow_unpublished: bool = False,
 ):
     """
     Avança o request conforme a DecisionTable (por cliente).
@@ -148,7 +160,7 @@ def advance_request_by_rule(
     if client_code is None:
         client_code = (cr.payload or {}).get("client_code")
 
-    dv = get_published_version(client_code, table_key)
+    dv = get_published_version(client_code, table_key, allow_unpublished=allow_unpublished)
     if not dv:
         raise ValueError(f"Nenhuma DecisionTable publicada para cliente={client_code} key={table_key}")
 

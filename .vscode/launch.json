@@ -6,7 +6,7 @@
     "configurations": [
         
         {
-            "name": "Python Debugger: Django",
+   ive      "name": "Python Debugger: Django",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}\\manage.py",
