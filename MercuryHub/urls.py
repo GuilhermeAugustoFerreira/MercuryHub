@@ -30,6 +30,7 @@ from Classification.views import (
     ClassCharacteristicAddView
 )
 from Governance.views import MaterialCreationRequestCreateView, MaterialCreationRequestSubmitView
+from MaterialGlobal.views import SapCheckTableListView
 
 router = DefaultRouter()
 router.register(r'classes', ClassHeaderViewSet, basename='classheader')
@@ -48,6 +49,7 @@ urlpatterns = [
         name='class-available-characteristics'
     ),
     path('api/class-characteristics-add/', ClassCharacteristicAddView.as_view(), name='class-characteristics-add'),
+    path('api/sap-check-tables/', SapCheckTableListView.as_view(), name='sap-check-tables'),
     path('api/material-requests/', MaterialCreationRequestCreateView.as_view(), name='material-request-create'),
     path('api/material-requests/<int:request_id>/submit/', MaterialCreationRequestSubmitView.as_view(), name='material-request-submit'),
     path('api/', include(router.urls)),

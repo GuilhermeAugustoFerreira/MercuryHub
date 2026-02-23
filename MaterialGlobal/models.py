@@ -44,3 +44,26 @@ class MaterialDescription(models.Model):
 
     def __str__(self):
         return f"{self.material.material_number} ({self.language})"
+
+
+class SapCheckTableEntry(models.Model):
+    domain = models.CharField(max_length=50)
+    code = models.CharField(max_length=40)
+    description = models.CharField(max_length=120)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'sap_check_table_entry'
+        verbose_name = 'SAP Check Table Entry'
+        verbose_name_plural = 'SAP Check Table Entries'
+        unique_together = ('domain', 'code')
+        indexes = [
+            models.Index(fields=['domain', 'is_active']),
+            models.Index(fields=['domain', 'sort_order']),
+        ]
+
+    def __str__(self):
+        return f"{self.domain}:{self.code}"
