@@ -23,9 +23,9 @@ class GlobalMaterial(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'global_material'
-        verbose_name = 'Global Material'
-        verbose_name_plural = 'Global Materials'
+        db_table = 'MARA'
+        verbose_name = 'MARA'
+        verbose_name_plural = 'MARA'
 
     def __str__(self):
         return f"{self.material_number} - {self.material_type}"
@@ -37,10 +37,10 @@ class MaterialDescription(models.Model):
     description = models.CharField(max_length=40)  # MAKTL (Descrição do material)
 
     class Meta:
-        db_table = 'material_description'
+        db_table = 'MAKT'
         unique_together = ('material', 'language')
-        verbose_name = 'Material Description'
-        verbose_name_plural = 'Material Descriptions'
+        verbose_name = 'MAKT'
+        verbose_name_plural = 'MAKT'
 
     def __str__(self):
         return f"{self.material.material_number} ({self.language})"

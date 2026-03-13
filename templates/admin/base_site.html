@@ -1,0 +1,21 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}MercuryHub Admin{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="icon" type="image/png" href="{% static 'admin_brand/images/logo2.png' %}" />
+{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin_brand/css/admin-mercuryhub.css' %}" />
+{% endblock %}
+
+{% block branding %}
+  <div class="mh-brand">
+    <img src="{% static 'admin_brand/images/logo2.png' %}" alt="MercuryHub Symbol" class="mh-logo-symbol" />
+    <img src="{% static 'admin_brand/images/logo3.png' %}" alt="MercuryHub" class="mh-logo-wordmark" />
+  </div>
+{% endblock %}

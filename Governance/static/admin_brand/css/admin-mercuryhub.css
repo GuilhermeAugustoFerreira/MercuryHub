@@ -1,0 +1,77 @@
+:root {
+  --mh-navy: #000921;
+  --mh-navy-2: #000f30;
+  --mh-cyan: #00c6b9;
+  --mh-cyan-soft: #d7f8f4;
+}
+
+#header {
+  background: var(--mh-navy) !important;
+  color: var(--mh-cyan-soft) !important;
+}
+
+#branding h1,
+#branding h1 a:link,
+#branding h1 a:visited {
+  color: var(--mh-cyan-soft) !important;
+}
+
+.mh-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mh-logo-symbol {
+  height: 34px;
+  width: auto;
+}
+
+.mh-logo-wordmark {
+  height: 20px;
+  width: auto;
+}
+
+div.breadcrumbs {
+  background: var(--mh-navy-2) !important;
+  color: var(--mh-cyan-soft) !important;
+}
+
+div.breadcrumbs a {
+  color: var(--mh-cyan-soft) !important;
+}
+
+a:link,
+a:visited {
+  color: #008d86 !important;
+}
+
+a:hover,
+a:focus {
+  color: var(--mh-cyan) !important;
+}
+
+.button,
+input[type=submit],
+input[type=button],
+.submit-row input,
+a.button {
+  background: var(--mh-cyan) !important;
+  border-color: var(--mh-cyan) !important;
+}
+
+.button:hover,
+input[type=submit]:hover,
+input[type=button]:hover,
+.button:focus,
+input[type=submit]:focus,
+input[type=button]:focus {
+  background: #00a89d !important;
+}
+
+.module h2,
+.module caption,
+.inline-group h2 {
+  background: var(--mh-navy-2) !important;
+  color: var(--mh-cyan-soft) !important;
+}

@@ -4,6 +4,10 @@ from django.db import models
 from django.contrib.admin.widgets import AdminTextareaWidget
 from .models import MaterialCreationRequest
 
+admin.site.site_header = "MercuryHub Administration"
+admin.site.site_title = "MercuryHub Admin"
+admin.site.index_title = "MercuryHub"
+
 
 @admin.register(MaterialCreationRequest)
 class MaterialCreationRequestAdmin(admin.ModelAdmin):
